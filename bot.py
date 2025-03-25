@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import requests
 import zipfile
 import fitz  # PyMuPDF (PDFni o‘qish)
 from flask import Flask  # 🔥 Fake Web Server uchun
@@ -203,14 +204,25 @@ async def stop_processing(message: types.Message):
     await message.answer("🚫 Jarayon to‘xtatildi.")
 
 
-# ✅ Always-on: Bot qayta ishga tushadi!
+async def keep_alive():
+    while True:
+        try:
+            requests.get("https://fileextractor01-1.onrender.com")
+            print("Ping yuborildi!")
+        except Exception as e:
+            print(f"Ping xatosi: {e}")
+        await asyncio.sleep(1500)  # 25 daqiqada bir ping yuboriladi
+
+
 async def main():
-    asyncio.create_task(asyncio.to_thread(run_server))  # 🔥 Fake serverni ishga tushirish
+    asyncio.create_task(keep_alive())  # 🔥 Botni o‘chirmaslik uchun ping ishlatish
     while True:
         try:
             await dp.start_polling(bot)
         except Exception as e:
-            logging.error(f"🚀 Bot qayta ishga tushdi! Xatolik: {e}")
+            print(f"Bot qayta ishga tushdi! Xatolik: {e}")
+            await asyncio.sleep(5)  # 🔥 5 soniyadan keyin qayta ishga tushadi
+
 
 if __name__ == "__main__":
     asyncio.run(main())

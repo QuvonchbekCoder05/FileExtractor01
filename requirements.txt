@@ -4,4 +4,4 @@ pymupdf
 Pillow
 python-docx
 flask
-
+requests
