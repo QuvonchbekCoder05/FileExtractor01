@@ -3,12 +3,23 @@ import logging
 import os
 import zipfile
 import fitz  # PyMuPDF (PDFni o‘qish)
+from flask import Flask  # 🔥 Fake Web Server uchun
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.types import FSInputFile, ReplyKeyboardMarkup, KeyboardButton
 from docx import Document  # DOCX fayl yaratish uchun
 from PIL import Image
 from config import BOT_TOKEN, TEMP_DIR
+
+# 🔥 Fake Web Server
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot ishlayapti!"
+
+def run_server():
+    app.run(host="0.0.0.0", port=10000)  # ✅ Fake port ochiladi
 
 logging.basicConfig(level=logging.INFO)
 
@@ -24,7 +35,7 @@ def cleanup_temp_files():
         file_path = os.path.join(TEMP_DIR, file)
         try:
             os.remove(file_path)
-            logging.info(f"🗑️ Fayl o‘chirildi: {file_path}")
+            logging.info(f"🗑 Fayl o‘chirildi: {file_path}")
         except Exception as e:
             logging.error(f"❌ Faylni o‘chirishda xatolik: {file_path} - {str(e)}")
 
@@ -75,6 +86,35 @@ async def handle_document(message: types.Message):
         "✅ Fayl qabul qilindi! Endi menyudan kerakli funksiyani tanlang.",
         reply_markup=menu_buttons,
     )
+
+
+# ✅ DOCni PDFga o‘girish (Tuzatilgan!)
+@dp.message(F.text == "📄 DOC -> PDF")
+async def doc_to_pdf(message: types.Message):
+    files = os.listdir(TEMP_DIR)
+    doc_files = [f for f in files if f.endswith(".docx") or f.endswith(".doc")]
+
+    if not doc_files:
+        await message.answer("❌ DOC fayl yuklanmagan.")
+        return
+
+    file_path = os.path.join(TEMP_DIR, doc_files[0])
+    pdf_path = file_path.replace(".docx", ".pdf").replace(".doc", ".pdf")
+
+    doc = Document(file_path)
+    text = "\n".join([p.text for p in doc.paragraphs])
+
+    pdf_doc = fitz.open()
+    page = pdf_doc.new_page()
+    page.insert_text((100, 100), text, fontsize=12)
+
+    pdf_doc.save(pdf_path)
+    pdf_doc.close()
+
+    await message.answer("✅ DOC PDFga o‘girildi!")
+    await bot.send_document(message.chat.id, FSInputFile(pdf_path))
+
+    cleanup_temp_files()
 
 
 # ✅ Rasmni PDFga o‘girish
@@ -165,12 +205,12 @@ async def stop_processing(message: types.Message):
 
 # ✅ Always-on: Bot qayta ishga tushadi!
 async def main():
+    asyncio.create_task(asyncio.to_thread(run_server))  # 🔥 Fake serverni ishga tushirish
     while True:
         try:
             await dp.start_polling(bot)
         except Exception as e:
             logging.error(f"🚀 Bot qayta ishga tushdi! Xatolik: {e}")
-
 
 if __name__ == "__main__":
     asyncio.run(main())
