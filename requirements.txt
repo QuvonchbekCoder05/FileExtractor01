@@ -3,4 +3,4 @@ python-dotenv
 pymupdf
 Pillow
 python-docx
-pytesseract
+
